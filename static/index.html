@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentence Similarity Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex flex-col justify-center items-center p-4">
+    <div class="w-full max-w-xl bg-white shadow-2xl rounded-xl p-8 border border-blue-100">
+        <h1 class="text-3xl font-bold text-center text-blue-800 mb-6">
+            Sentence Similarity Checker
+        </h1>
+        
+        <div class="space-y-4 mb-6">
+            <div>
+                <label for="sentence1" class="block text-sm font-medium text-gray-700 mb-2">
+                    First Sentence
+                </label>
+                <textarea 
+                    id="sentence1" 
+                    rows="3" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your first sentence..."
+                ></textarea>
+            </div>
+            
+            <div>
+                <label for="sentence2" class="block text-sm font-medium text-gray-700 mb-2">
+                    Second Sentence
+                </label>
+                <textarea 
+                    id="sentence2" 
+                    rows="3" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your second sentence..."
+                ></textarea>
+            </div>
+        </div>
+        
+        <div class="flex justify-center">
+            <button 
+                id="compareBtn"
+                class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition duration-300 flex items-center space-x-2"
+            >
+                <i class="fas fa-balance-scale"></i>
+                <span>Compare Sentences</span>
+            </button>
+        </div>
+        
+        <div 
+            id="resultContainer" 
+            class="mt-6 text-center hidden"
+        >
+            <div 
+                id="resultIcon" 
+                class="mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-full"
+            >
+                <i class="text-5xl" id="resultIconElement"></i>
+            </div>
+            
+            <h2 
+                id="resultTitle" 
+                class="text-2xl font-bold mb-2"
+            ></h2>
+            
+            <p 
+                id="resultDetails" 
+                class="text-gray-600 px-4"
+            ></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sentence1Input = document.getElementById('sentence1');
+            const sentence2Input = document.getElementById('sentence2');
+            const compareBtn = document.getElementById('compareBtn');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultIconElement = document.getElementById('resultIconElement');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultDetails = document.getElementById('resultDetails');
+
+            compareBtn.addEventListener('click', async () => {
+                // Reset previous results
+                resultContainer.classList.add('hidden');
+                compareBtn.disabled = true;
+                compareBtn.innerHTML = `
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Comparing...</span>
+                `;
+
+                try {
+                    const response = await fetch('http://localhost:5000/api/compare-sentences', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            sentence1: sentence1Input.value.trim(),
+                            sentence2: sentence2Input.value.trim()
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    // Show results
+                    resultContainer.classList.remove('hidden');
+
+                    if (data.is_similar) {
+                        resultIcon.className = 'mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-full bg-green-100';
+                        resultIconElement.className = 'fas fa-check-circle text-green-600';
+                        resultTitle.className = 'text-2xl font-bold mb-2 text-green-600';
+                        resultTitle.textContent = 'Semantically Similar';
+                        resultDetails.textContent = data.reasoning || 'Sentences convey the same meaning.';
+                    } else {
+                        resultIcon.className = 'mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-full bg-red-100';
+                        resultIconElement.className = 'fas fa-times-circle text-red-600';
+                        resultTitle.className = 'text-2xl font-bold mb-2 text-red-600';
+                        resultTitle.textContent = 'Not Similar';
+                        resultDetails.textContent = data.reasoning || 'Sentences have different meanings.';
+                    }
+                } catch (error) {
+                    resultContainer.classList.remove('hidden');
+                    resultIcon.className = 'mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-full bg-yellow-100';
+                    resultIconElement.className = 'fas fa-exclamation-triangle text-yellow-600';
+                    resultTitle.className = 'text-2xl font-bold mb-2 text-yellow-600';
+                    resultTitle.textContent = 'Error';
+                    resultDetails.textContent = 'Failed to compare sentences. Please try again.';
+                    console.error('Comparison error:', error);
+                } finally {
+                    compareBtn.disabled = false;
+                    compareBtn.innerHTML = `
+                        <i class="fas fa-balance-scale"></i>
+                        <span>Compare Sentences</span>
+                    `;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
