@@ -24,45 +24,43 @@ client = Groq(
 
 @app.route('/api/compare-sentences', methods=['POST'])
 def compare_sentences():
-    """
-    API endpoint to compare semantic similarity of two sentences.
-    """
     try:
-        # Get JSON data from request
         data = request.get_json()
-
-        # Extract sentences
         sentence1 = data.get('sentence1', '').strip()
         sentence2 = data.get('sentence2', '').strip()
 
-        # Validate input
         if not sentence1 or not sentence2:
             return jsonify({
                 "error": "Both sentences are required",
                 "is_similar": False,
+                "similarity_percentage": 0,
                 "reasoning": "Input sentences cannot be empty."
             }), 400
 
-        # Prepare prompt for Groq
         messages = [
             {
                 "role": "system",
                 "content": """You are a precise semantic similarity evaluator. 
-Carefully analyze two sentences and determine if they convey the same core meaning.
+Analyze two sentences and determine their semantic similarity.
 Respond EXACTLY in this JSON format (do not include any other text):
 {
     "is_similar": true/false,
-    "reasoning": "A concise explanation of why the sentences are similar or different."
+    "similarity_percentage": <number between 0 and 100>,
+    "reasoning": "A concise explanation of why the sentences are similar or different, including specific details about matching and differing concepts."
 }
-Focus on semantic meaning, not exact wording."""
+The similarity_percentage should reflect how close the meanings are:
+- 100%: Identical meaning
+- 75-99%: Very similar with minor differences
+- 50-74%: Partially similar
+- 25-49%: Mostly different with some common elements
+- 0-24%: Completely different meanings"""
             },
             {
                 "role": "user",
-                "content": f"Compare these two sentences:\n1. '{sentence1}'\n2. '{sentence2}'\n\nDo they mean the same thing?"
+                "content": f"Compare these two sentences:\n1. '{sentence1}'\n2. '{sentence2}'\n\nAnalyze their similarity."
             }
         ]
 
-        # Call Groq API
         response = client.chat.completions.create(
             messages=messages,
             model="llama-3.3-70b-versatile",
@@ -71,38 +69,39 @@ Focus on semantic meaning, not exact wording."""
             temperature=0.2
         )
 
-        # Extract the result
         result_str = response.choices[0].message.content
 
-        # Parse JSON
         try:
             result = json.loads(result_str)
+            # Validate percentage is within bounds
+            similarity_percentage = float(result.get('similarity_percentage', 0))
+            if not 0 <= similarity_percentage <= 100:
+                similarity_percentage = max(0, min(100, similarity_percentage))
+            
+            return jsonify({
+                "is_similar": result.get('is_similar', False),
+                "similarity_percentage": similarity_percentage,
+                "reasoning": result.get('reasoning', 'No reasoning provided.')
+            })
         except json.JSONDecodeError:
             print(f"Failed to parse JSON. Raw response: {result_str}")
             return jsonify({
                 "error": "Failed to parse AI response",
                 "is_similar": False,
+                "similarity_percentage": 0,
                 "reasoning": "Internal processing error occurred."
             }), 500
 
-        # Return results
-        return jsonify({
-            "is_similar": result.get('is_similar', False),
-            "reasoning": result.get('reasoning', 'No reasoning provided.')
-        })
-
     except Exception as e:
-        # Detailed error logging
         print("Unexpected error occurred:")
         print(traceback.format_exc())
-
         return jsonify({
             "error": "An unexpected error occurred",
             "details": str(e),
             "is_similar": False,
+            "similarity_percentage": 0,
             "reasoning": "Server encountered an unexpected error during processing."
         }), 500
-
 
 @app.route('/')
 def serve_app():
