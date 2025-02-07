@@ -40,7 +40,7 @@ def compare_sentences():
         messages = [
             {
                 "role": "system",
-                "content": """You are a precise semantic similarity evaluator. 
+                "content": """You are a precise multilingual semantic similarity evaluator. 
 Analyze two sentences and determine their semantic similarity.
 Respond EXACTLY in this JSON format (do not include any other text):
 {
